@@ -57,7 +57,7 @@ pip install purepythonmilter
 
 ## Setup the Postfix Server
 
-The example of ```main.cf``` can be seen in the  
+The example of ```main.cf``` setting can be seen in the directory  
 
 1. Configure Postfix to use Maildir-style mailboxes
 
