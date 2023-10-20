@@ -1,6 +1,14 @@
-# Postfix Server Email Filtering using Python
+# Postfix Server Email Filtering
 
-Python program that assist on filtering email before queue in Postfix server using purepythonmilter library. 
+This repository display 3 method to filtering email for postfix server (milter, before queue and after queue)
+
+The milter is run through python program that assist on filtering email in Postfix server using purepythonmilter library. 
+
+The after queue is run by assigning the shell script to master.cf, which is configuration file for postfix server.
+
+To run each method of filtering, it is required to perform instruction until Testing the Postfix server
+
+Below are the instructions to setup the postfix configuration and simulate email sending and the 3 methods of filtering system
 
 # Instruction
 
@@ -57,7 +65,7 @@ pip install purepythonmilter
 
 ## Setup the Postfix Server
 
-The example of ```main.cf``` setting can be seen in the directory  
+The example of ```main.cf``` setting can be seen in the directory inside `/milter`  
 
 1. Configure Postfix to use Maildir-style mailboxes
 
@@ -153,12 +161,12 @@ If you see new mail, therefore its indicates success on the sending messages
 
 ## Testing Python Filtering System 
 
-To test the python filtering system, it is required to run the python program first before running the postfix. Before running the program, it is required to check if the IP address and the port variable inside the python program matches with the IP address and port ```smtpd_milters``` in the ```main.cf``` files
+To test the python filtering system, it is required to run the python program first before running the postfix. It is also required to check if the IP address and the port variable inside the python program matches with the IP address and port ```smtpd_milters``` in the ```main.cf``` files
 
 1. Type command below to run python
 
 ```
-python3 filterBeforeQueue.py
+python3 pythonMilter.py
 ```
 
 Once the python program runs, it its required to perform steps 4 to 6 from the ```Testing the Postfix server``` Section
@@ -173,3 +181,80 @@ mail from: testuser@example.com
 If the terminal display warning, it indicates that the filtering system is working
 
 The restriction rules can be adjusted in the python file by accessing the isSpam function, which indicates what are the rules that classify whether the mail is a spam or not
+
+## Setup Before Queue Filtering
+
+## Testing Before Queue Filtering
+
+## Setup After Queue Filtering
+
+These steps can only be performed once Testing Postfix Server instruction has been completed
+
+1. Open the script file afterQueue.sh to see the code and the filtering system
+
+2. Make sure that the INSPECT_DIR is the directory of your postfix filter
+
+3. To implement or modify the filtering system, place any code under the cat > in.$$
+
+In this example the filtering section will reject if the domain of the sender is @example.com
+
+4. Change the permission of your postfix filter directory to allow writing by others
+
+```
+chmod 777 /var/spool/filter
+```
+
+change the /var/spool/filter based on your postfix filter directory
+
+5. Test the shell script manually by run the command below
+
+```
+./afterQueue.sh -f sender receiver < message.txt
+```
+
+replace sender with the email of the sender and receiver with the email of the receiver
+
+make sure the sender email followed the filtering system that is setup based on the script (In this case @example.com is not accepted, therefore use any email that ends with @example.com sender) 
+
+6. If the echo command executed therefore it indicates that the filtering system is working (In this case print out log of "Message is not accepted") 
+
+If it does not work, recheck the permission on the filter directory and enable it to allow writing by others
+
+7. Go to terminal and create new user called "filter" using this command
+
+```
+sudo useradd filter
+```
+
+The name "filter" can be exchanged to anything else
+
+8. Open ```master.cf``` and write this section inside to link the shell script to Postfix After Queue Filter
+
+```
+# ==========================================================================
+# service type  private unpriv  chroot  wakeup  maxproc command + args
+#               (yes)   (yes)   (no)    (never) (100)
+# ==========================================================================
+filter    unix  -       n       n       -       10      pipe
+    flags=Rq user=filter null_sender=
+    argv=/path/to/afterQueue.sh -f ${sender} -- ${recipient}
+
+smtp      inet  n       -       n       -       100      smtpd
+        -o content_filter=filter:dummy
+```
+
+The user is based on the name of the user that is created on the previous step, and the /path/to/afterQueue.sh indicates the path to the afterQueue.sh script
+
+to check the path run ```pwd``` on the selected directory that has afterQueue.sh
+
+Make sure to replace the previous setting of the ```master.cf``` with this one to enable the after queue to run
+
+9. Run ```sudo postfix reload``` to save the configuration
+
+## Testing After Queue Filtering
+
+1. To test whether the filtering system works, repeat the step 6 to 7 from the section of Testing the Postfix Server
+
+Instead sending mail from testuser@localhost, replace the domain of the sender based on the filtered logic implemented (In the case @example.com supposed to be filtered, therefore replace to testuser@example.com)
+
+2. To check the rejected mail, keep at the testuser terminal and run ```mail``` or ```mailq```, it will display the rejected mail and display the error based on setting in the script
