@@ -23,6 +23,9 @@ def handle_client(client_socket):
             # Check if the sender domain is on the rejection list
             if sender_domain == 'example.com':
                 print(f"Rejecting email from {sender_address}")
+
+                # SMTP Error Messages
+                # https://support.google.com/a/answer/3726730?sjid=12069780384646155174-AP
                 client_socket.sendall(b'550 5.7.1 Sender rejected\r\n')  # SMTP rejection response
                 break
 
